@@ -5,6 +5,7 @@ import type { AttributeValue, Function, Node, Value, Variable } from './types';
 type Options = {
   allowIndentation?: boolean;
   maxTagOpeningWidth?: number;
+  orderedListMode?: 'increment' | 'repeat';
   parent?: Node;
   indent?: number;
 };
@@ -247,6 +248,7 @@ function* formatNode(n: Node, o: Options = {}) {
         .reduce(max, 0);
 
       const boundary = '`'.repeat(innerFenceLength ? innerFenceLength + 1 : 3);
+      const needsNlBeforeEndBoundary = !n.attributes.content.endsWith(NL);
 
       yield boundary;
       if (n.attributes.language) yield n.attributes.language;
@@ -255,6 +257,9 @@ function* formatNode(n: Node, o: Options = {}) {
       yield NL;
       yield indent;
       yield n.attributes.content.split(NL).join(NL + indent); // yield* formatChildren(n, no);
+      if (needsNlBeforeEndBoundary) {
+        yield NL;
+      }
       yield boundary;
       yield NL;
       break;
@@ -302,11 +307,20 @@ function* formatNode(n: Node, o: Options = {}) {
       );
 
       for (let i = 0; i < n.children.length; i++) {
-        const prefix = n.attributes.ordered
-          ? `${i === 0 ? n.attributes.start ?? '1' : '1'}${
-              n.attributes.marker ?? OL
-            }`
-          : n.attributes.marker ?? UL;
+        const prefix = (() => {
+          if (!n.attributes.ordered) return n.attributes.marker ?? UL;
+
+          // Must be an ordered list now
+          let number = '1';
+          const startNumber = n.attributes.start ?? 1;
+          if (i === 0) number = startNumber.toString();
+
+          if (o.orderedListMode === 'increment') {
+            number = (parseInt(startNumber) + i).toString();
+          }
+
+          return `${number}${n.attributes.marker ?? OL}`;
+        })();
         let d = format(n.children[i], increment(no, prefix.length + 1));
 
         if (!isLoose || i === n.children.length - 1) {

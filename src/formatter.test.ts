@@ -506,6 +506,48 @@ Yes!
     stable(expected);
   });
 
+  it('ordered lists with incrementing numbers', () => {
+    const source = `
+- foo
+- bar
+* baz
+* qux
+
+
+7) foo
+1) bar
+1) baz
+3. foo
+1. bar
+1. baz
+1) foo
+4) bar
+9) baz
+`;
+    const expected = `
+- foo
+- bar
+
+* baz
+* qux
+
+7) foo
+8) bar
+9) baz
+
+3. foo
+4. bar
+5. baz
+
+1) foo
+2) bar
+3) baz
+`;
+    const options = { orderedListMode: 'increment' };
+    check(source, expected, options);
+    stable(expected, options);
+  });
+
   it('"loose" lists', () => {
     const source = `
 - a
@@ -800,5 +842,10 @@ ${'`'.repeat(4)}
     const b = format(sourceNode);
     const d = diff(expected, b.trim());
     if (d && d.includes('Compared values have no visual difference.')) return;
+  });
+
+  it('makes sure fences are formatted correctly if content has no ending newline', () => {
+    const node = new Markdoc.Ast.Node('fence', { content: 'foo' });
+    expect(format(node)).toEqual('```\nfoo\n```\n');
   });
 });
